@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Center Break Schedule Generator</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --lunch-color: #e67e22;
+            --shortbreak-color: #2ecc71;
+            --volume-high: #e74c3c;
+            --volume-medium: #f39c12;
+            --volume-low: #2ecc71;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --excel-color: #1d6f42;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: var(--dark-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2rem;
+        }
+
+        h2 {
+            color: var(--secondary-color);
+            margin: 20px 0 15px;
+            font-size: 1.4rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .volume-indicator {
+            display: flex;
+            margin: 15px 0;
+            gap: 10px;
+        }
+
+        .volume-option {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .volume-option:hover {
+            opacity: 0.9;
+        }
+
+        .volume-option.selected {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        #volume-low {
+            background-color: var(--volume-low);
+            color: white;
+        }
+
+        #volume-medium {
+            background-color: var(--volume-medium);
+            color: white;
+        }
+
+        #volume-high {
+            background-color: var(--volume-high);
+            color: white;
+        }
+
+        .schedule-display {
+            margin-top: 30px;
+            border-top: 2px solid var(--light-color);
+            padding-top: 20px;
+        }
+
+        .agent-schedule {
+            margin-bottom: 30px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+        }
+
+        .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--light-color);
+        }
+
+        .agent-name {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+
+        .shift-time {
+            color: var(--dark-color);
+            opacity: 0.8;
+        }
+
+        .break-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .break-item {
+            background-color: var(--light-color);
+            padding: 15px;
+            border-radius: 5px;
+            position: relative;
+        }
+
+        .break-time {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+
+        .break-duration {
+            color: var(--dark-color);
+            font-size: 0.9rem;
+        }
+
+        .break-type {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .break-type.lunch {
+            background-color: var(--lunch-color);
+        }
+
+        .break-type.short {
+            background-color: var(--shortbreak-color);
+        }
+
+        .no-breaks {
+            color: #7f8c8d;
+            font-style: italic;
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 10px;
+        }
+
+        .print-btn {
+            background-color: #95a5a6;
+        }
+
+        .print-btn:hover {
+            background-color: #7f8c8d;
+        }
+
+        .excel-btn {
+            background-color: var(--excel-color);
+        }
+
+        .excel-btn:hover {
+            background-color: #165834;
+        }
+
+        .team-input-group {
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #fdfdfd;
+        }
+
+        .team-input-group label {
+            font-size: 1.1rem;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+        }
+
+        .team-input-group input[type="text"],
+        .team-input-group select { /* Apply styles to select within team group */
+            margin-bottom: 10px;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .container, .container * {
+                visibility: visible;
+            }
+            .container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                box-shadow: none;
+            }
+            button {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            .break-list {
+                grid-template-columns: 1fr;
+            }
+            .agent-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .shift-time {
+                margin-top: 5px;
+            }
+            .actions {
+                flex-direction: column;
+            }
+            .volume-indicator {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Call Center Break Schedule Generator</h1>
+        
+        <div class="form-group">
+            <label for="num-teams">Number of Teams:</label>
+            <select id="num-teams">
+                <option value="1">1 Team</option>
+                <option value="2">2 Teams</option>
+                <option value="3">3 Teams</option>
+                <option value="4">4 Teams</option>
+                <option value="5">5 Teams</option>
+                <option value="6">6 Teams</option>
+                <option value="7">7 Teams</option>
+                <option value="8">8 Teams</option>
+                <option value="9">9 Teams</option>
+                <option value="10">10 Teams</option>
+                <option value="11">11 Teams</option>
+                <option value="12">12 Teams</option>
+                <option value="13">13 Teams</option>
+                <option value="14">14 Teams</option>
+                <option value="15">15 Teams</option>
+            </select>
+        </div>
+
+        <div id="team-names-container">
+            <!-- Team name, shift, and agent input fields will be dynamically added here -->
+        </div>
+        
+        <h2>Call Volume</h2>
+        <div class="volume-indicator">
+            <div id="volume-low" class="volume-option">Low Volume</div>
+            <div id="volume-medium" class="volume-option selected">Medium Volume</div>
+            <div id="volume-high" class="volume-option">High Volume</div>
+        </div>
+        
+        <div class="actions">
+            <button id="generate-btn">Generate Smart Schedule</button>
+            <button id="excel-btn" class="excel-btn">Export to Excel</button>
+            <button id="print-btn" class="print-btn">Print Schedule</button>
+        </div>
+        
+        <div class="schedule-display" id="schedule-display">
+            <!-- Generated schedules will appear here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let selectedVolume = 'medium';
+            
+            const numTeamsSelect = document.getElementById('num-teams');
+            const teamNamesContainer = document.getElementById('team-names-container');
+
+            const shiftOptionsHTML = `
+                <option value="6-15">6:00 AM - 3:00 PM</option>
+                <option value="7-16">7:00 AM - 4:00 PM</option>
+                <option value="8-17" selected>8:00 AM - 5:00 PM</option>
+                <option value="9-18">9:00 AM - 6:00 PM</option>
+                <option value="10-19">10:00 AM - 7:00 PM</option>
+                <option value="11-20">11:00 AM - 8:00 PM</option>
+                <option value="12-21">12:00 PM - 9:00 PM</option>
+                <option value="13-22">1:00 PM - 10:00 PM</option>
+                <option value="14-23">2:00 PM - 11:00 PM</option>
+                <option value="15-24">3:00 PM - 12:00 AM</option>
+                <option value="18-3">6:00 PM - 3:00 AM</option>
+                <option value="20-5">8:00 PM - 5:00 AM</option>
+                <option value="22-7">10:00 PM - 7:00 AM</option>
+            `;
+
+            // Function to generate team name, shift, and agent input fields
+            function generateTeamInputs() {
+                teamNamesContainer.innerHTML = '';
+                const numTeams = parseInt(numTeamsSelect.value);
+                for (let i = 1; i <= numTeams; i++) {
+                    const teamGroup = document.createElement('div');
+                    teamGroup.className = 'team-input-group';
+                    teamGroup.innerHTML = `
+                        <label for="team-name-${i}">Team ${i} Name:</label>
+                        <input type="text" id="team-name-${i}" value="Team ${i}" placeholder="Enter name for Team ${i}">
+                        
+                        <label for="team-shift-${i}">Team ${i} Shift Schedule:</label>
+                        <select id="team-shift-${i}">
+                            ${shiftOptionsHTML}
+                        </select>
+
+                        <label for="team-agents-${i}">Team ${i} Agents (one name per line):</label>
+                        <textarea id="team-agents-${i}" rows="5" placeholder="Enter agent names for Team ${i}"></textarea>
+                    `;
+                    teamNamesContainer.appendChild(teamGroup);
+                }
+            }
+
+            // Initial generation of team inputs
+            generateTeamInputs();
+
+            // Event listener for number of teams change
+            numTeamsSelect.addEventListener('change', generateTeamInputs);
+
+            // Set up volume selection
+            document.querySelectorAll('.volume-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.volume-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    selectedVolume = this.id.replace('volume-', '');
+                });
+            });
+            
+            // Generate schedule
+            document.getElementById('generate-btn').addEventListener('click', generateSchedule);
+            
+            // Print schedule
+            document.getElementById('print-btn').addEventListener('click', function() {
+                window.print();
+            });
+            
+            // Export to Excel
+            document.getElementById('excel-btn').addEventListener('click', exportToExcel);
+            
+            // Generate schedule function
+            function generateSchedule() {
+                const numTeams = parseInt(document.getElementById('num-teams').value);
+                
+                const allAgents = [];
+                const teamsData = {}; // Store agents grouped by team, including their shift info
+                for (let i = 1; i <= numTeams; i++) {
+                    const teamName = document.getElementById(`team-name-${i}`).value.trim();
+                    const teamShiftOption = document.getElementById(`team-shift-${i}`).value;
+                    const [startHour, endHour] = teamShiftOption.split('-').map(Number);
+                    const teamShiftStart = `${startHour.toString().padStart(2, '0')}:00`;
+                    const teamShiftEnd = `${endHour === 24 ? '00' : endHour.toString().padStart(2, '0')}:00`;
+
+                    const teamAgentsText = document.getElementById(`team-agents-${i}`).value.trim();
+                    if (teamAgentsText) {
+                        const agentsInTeam = teamAgentsText.split('\n').map(name => name.trim()).filter(name => name !== '');
+                        teamsData[teamName] = {
+                            shiftStart: teamShiftStart,
+                            shiftEnd: teamShiftEnd,
+                            agents: agentsInTeam.map(name => ({ name: name, team: teamName, shiftStart: teamShiftStart, shiftEnd: teamShiftEnd }))
+                        };
+                        allAgents.push(...teamsData[teamName].agents); // Add agents to the overall list
+                    }
+                }
+
+                if (allAgents.length === 0) {
+                    alert('Please enter at least one agent name.');
+                    return;
+                }
+
+                // --- Lunch Staggering Logic ---
+                const lunchCapacityPerTeamPerHour = { min: 2, max: 3 }; // 2 to 3 agents per hour per team
+                const lunchBreakDuration = 60; // minutes
+
+                // Initialize lunch slots for each team based on their specific shift duration
+                const lunchSlots = {}; // { teamName: { 'HH:MM': count } }
+                const agentLunchAssignments = {}; // { agentName: 'HH:MM' }
+
+                // First, collect all agents and their shift details
+                const agentsToScheduleLunch = [];
+                for (const teamName in teamsData) {
+                    const teamInfo = teamsData[teamName];
+                    const teamShiftStartParsed = parseTime(teamInfo.shiftStart);
+                    const teamShiftEndParsed = parseTime(teamInfo.shiftEnd);
+                    let teamTotalShiftMinutes = (teamShiftEndParsed.hours * 60 + teamShiftEndParsed.minutes) - 
+                                                (teamShiftStartParsed.hours * 60 + teamShiftStartParsed.minutes);
+                    const teamAdjustedShiftMinutes = teamTotalShiftMinutes < 0 ? (24*60) + teamTotalShiftMinutes : teamTotalShiftMinutes;
+
+                    lunchSlots[teamName] = {};
+                    // Initialize 15-minute slots for the entire 24-hour cycle to handle overnight shifts easily
+                    // We will only consider slots within the team's actual shift later.
+                    for (let h = 0; h < 24; h++) {
+                        for (let m = 0; m < 60; m += 15) {
+                            const slotKey = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                            lunchSlots[teamName][slotKey] = 0;
+                        }
+                    }
+
+                    teamInfo.agents.forEach(agent => {
+                        agentsToScheduleLunch.push({
+                            name: agent.name,
+                            team: agent.team,
+                            shiftStart: teamInfo.shiftStart,
+                            shiftEnd: teamInfo.shiftEnd,
+                            shiftStartParsed: teamShiftStartParsed,
+                            adjustedShiftMinutes: teamAdjustedShiftMinutes
+                        });
+                    });
+                }
+
+                // Shuffle all agents to randomize lunch assignments across all teams
+                agentsToScheduleLunch.sort(() => Math.random() - 0.5);
+
+                // Assign lunches
+                agentsToScheduleLunch.forEach(agent => {
+                    if (agentLunchAssignments[agent.name]) return; // Already assigned
+
+                    const minLunchStartOffset = 90; // 1.5 hours into shift
+                    const maxLunchStartOffset = agent.adjustedShiftMinutes - lunchBreakDuration - 90; // 1.5 hours before shift end
+
+                    // Generate possible lunch start times for THIS agent's shift
+                    const possibleLunchStartsForAgent = [];
+                    let currentMinutes = agent.shiftStartParsed.totalMinutes;
+                    while (currentMinutes < agent.shiftStartParsed.totalMinutes + agent.adjustedShiftMinutes - lunchBreakDuration) {
+                        const timeObj = addMinutes(agent.shiftStartParsed, currentMinutes - agent.shiftStartParsed.totalMinutes);
+                        const formattedTime = formatCleanTime(timeObj);
+                        
+                        const timeInMinutesFromShiftStart = parseTime(formattedTime).totalMinutes - agent.shiftStartParsed.totalMinutes;
+                        if (timeInMinutesFromShiftStart >= minLunchStartOffset && timeInMinutesFromShiftStart <= maxLunchStartOffset) {
+                            possibleLunchStartsForAgent.push(formattedTime);
+                        }
+                        currentMinutes += 15;
+                    }
+                    
+                    // Shuffle possible lunch starts for this agent to add more randomness
+                    possibleLunchStartsForAgent.sort(() => Math.random() - 0.5);
+
+                    let assignedLunchTime = null;
+                    for (const lunchStartTime of possibleLunchStartsForAgent) {
+                        let canAssign = true;
+                        // Check capacity for the entire 60-minute lunch duration
+                        for (let m = 0; m < lunchBreakDuration; m += 15) {
+                            const checkTime = addMinutes(parseTime(lunchStartTime), m);
+                            const slotKey = formatCleanTime(checkTime);
+                            
+                            // Check if this slot is within the team's shift and if capacity is available
+                            // We check against the global 24-hour initialized lunchSlots, but only care if it's within the agent's shift
+                            if (lunchSlots[agent.team][slotKey] !== undefined) {
+                                if (lunchSlots[agent.team][slotKey] >= lunchCapacityPerTeamPerHour.max) {
+                                    canAssign = false;
+                                    break;
+                                }
+                            } else {
+                                // This should ideally not happen if possibleLunchStartsForAgent is correctly generated
+                                canAssign = false; 
+                                break;
+                            }
+                        }
+
+                        if (canAssign) {
+                            assignedLunchTime = lunchStartTime;
+                            // Increment counts for all 15-minute intervals covered by this lunch
+                            for (let m = 0; m < lunchBreakDuration; m += 15) {
+                                const checkTime = addMinutes(parseTime(lunchStartTime), m);
+                                const slotKey = formatCleanTime(checkTime);
+                                if (lunchSlots[agent.team][slotKey] !== undefined) {
+                                    lunchSlots[agent.team][slotKey]++;
+                                }
+                            }
+                            break; // Found a slot, move to next agent
+                        }
+                    }
+                    agentLunchAssignments[agent.name] = assignedLunchTime;
+                });
+
+                // Fallback for agents who didn't get a lunch (should be rare with good parameters)
+                allAgents.forEach(agent => {
+                    if (!agentLunchAssignments[agent.name]) {
+                        // Assign a default lunch time if no suitable slot was found
+                        // This could be improved to find the least busy slot, but for now, a simple fallback
+                        const agentShiftStartParsed = parseTime(agent.shiftStart);
+                        let agentTotalShiftMinutes = (parseTime(agent.shiftEnd).hours * 60 + parseTime(agent.shiftEnd).minutes) - 
+                                                    (agentShiftStartParsed.hours * 60 + agentShiftStartParsed.minutes);
+                        const agentAdjustedShiftMinutes = agentTotalShiftMinutes < 0 ? (24*60) + agentTotalShiftMinutes : agentTotalShiftMinutes;
+
+                        const fallbackLunchOffset = Math.floor(agentAdjustedShiftMinutes / 2); // Mid-shift
+                        agentLunchAssignments[agent.name] = formatCleanTime(addMinutes(agentShiftStartParsed, fallbackLunchOffset));
+                        console.warn(`Agent ${agent.name} did not get a preferred lunch slot. Assigned a fallback one.`);
+                    }
+                });
+                // --- End Lunch Staggering Logic ---
+
+                // Generate schedules for each agent
+                const scheduleDisplay = document.getElementById('schedule-display');
+                scheduleDisplay.innerHTML = '';
+                
+                // Determine break pattern (fixed: 2 short, 1 lunch)
+                const breakPattern = ['short', 'lunch', 'short']; 
+                
+                allAgents.forEach((agent, index) => {
+                    const agentSchedule = document.createElement('div');
+                    agentSchedule.className = 'agent-schedule';
+                    
+                    const agentHeader = document.createElement('div');
+                    agentHeader.className = 'agent-header';
+                    agentHeader.innerHTML = `
+                        <div class="agent-name">${agent.name} (${agent.team})</div>
+                        <div class="shift-time">Shift: ${formatTime(agent.shiftStart)} - ${formatTime(agent.shiftEnd)}</div>
+                    `;
+                    
+                    const breakList = document.createElement('div');
+                    breakList.className = 'break-list';
+                    
+                    // Generate breaks for this agent, passing their specific shift times and assigned lunch time
+                    const breaks = generateSmartBreaks(
+                        breakPattern, 
+                        agent.shiftStart, 
+                        agent.shiftEnd, 
+                        index, 
+                        allAgents.length, 
+                        selectedVolume, 
+                        agentLunchAssignments[agent.name]
+                    );
+                    
+                    if (breaks.length === 0) {
+                        const noBreaks = document.createElement('div');
+                        noBreaks.className = 'no-breaks';
+                        noBreaks.textContent = 'No breaks scheduled for this agent.';
+                        breakList.appendChild(noBreaks);
+                    } else {
+                        breaks.forEach(brk => {
+                            const breakItem = document.createElement('div');
+                            breakItem.className = 'break-item';
+                            
+                            const typeClass = brk.type === 'lunch' ? 'lunch' : 'short';
+                            const typeName = brk.type === 'lunch' ? 'LUNCH' : 'SHORT';
+                            
+                            breakItem.innerHTML = `
+                                <div class="break-type ${typeClass}">${typeName}</div>
+                                <div class="break-time">${brk.startTime} - ${brk.endTime}</div>
+                                <div class="break-duration">${brk.duration} minutes</div>
+                            `;
+                            breakList.appendChild(breakItem);
+                        });
+                    }
+                    
+                    agentSchedule.appendChild(agentHeader);
+                    agentSchedule.appendChild(breakList);
+                    scheduleDisplay.appendChild(agentSchedule);
+                });
+            }
+            
+            // Smart break generation with fixed 15/30/00 minute times
+            function generateSmartBreaks(breakPattern, shiftStart, shiftEnd, agentIndex, totalAgents, volume, assignedLunchTime) {
+                const breaks = [];
+                const startTime = parseTime(shiftStart);
+                const endTime = parseTime(shiftEnd);
+                let totalShiftMinutes = (endTime.hours * 60 + endTime.minutes) - 
+                                        (startTime.hours * 60 + startTime.minutes);
+                const adjustedShiftMinutes = totalShiftMinutes < 0 ? (24*60) + totalShiftMinutes : totalShiftMinutes;
+                
+                // Round to nearest 15 minutes for clean break times
+                const roundTo15 = (minutes) => {
+                    return Math.round(minutes / 15) * 15;
+                };
+
+                // Define break durations
+                const shortBreakDuration = 15;
+                const lunchBreakDuration = 60;
+
+                // Use the pre-assigned lunch time
+                const lunchStartMinutes = assignedLunchTime ? parseTime(assignedLunchTime).totalMinutes - startTime.totalMinutes : null;
+
+                // Add the assigned lunch break first
+                if (assignedLunchTime) {
+                    breaks.push({
+                        type: 'lunch',
+                        startTime: assignedLunchTime,
+                        endTime: formatCleanTime(addMinutes(parseTime(assignedLunchTime), lunchBreakDuration)),
+                        duration: lunchBreakDuration
+                    });
+                }
+
+                // Determine available segments for short breaks, avoiding the lunch period
+                let availableSegments = [];
+                if (lunchStartMinutes !== null) {
+                    const lunchEndMinutes = lunchStartMinutes + lunchBreakDuration;
+                    // Segment before lunch
+                    if (lunchStartMinutes > 0) {
+                        availableSegments.push({ start: 0, end: lunchStartMinutes });
+                    }
+                    // Segment after lunch
+                    if (lunchEndMinutes < adjustedShiftMinutes) {
+                        availableSegments.push({ start: lunchEndMinutes, end: adjustedShiftMinutes });
+                    }
+                } else {
+                    // If no lunch assigned (fallback, though should be handled by main logic)
+                    availableSegments.push({ start: 0, end: adjustedShiftMinutes });
+                }
+
+                // Ensure breaks are at least 30 minutes from shift start/end and other breaks
+                const minDistanceFromEdge = 30; // minutes from shift start/end
+                const minBreakSeparation = 60; // minutes between any two breaks
+
+                let shortBreaksToSchedule = 2;
+                let placedShortBreaks = 0;
+
+                // Attempt to place short breaks
+                for (let i = 0; i < shortBreaksToSchedule; i++) {
+                    let bestShortBreakTime = -1;
+                    let minConflict = Infinity;
+
+                    for (const segment of availableSegments) {
+                        // Calculate ideal placement within the segment
+                        let idealStart = segment.start + (segment.end - segment.start) * (i + 1) / (shortBreaksToSchedule + 1);
+                        
+                        // Apply volume-based adjustments for short breaks
+                        if (volume === 'low') {
+                            idealStart *= 0.9; // Slightly earlier
+                        } else if (volume === 'high') {
+                            idealStart *= 1.05; // Slightly later
+                        }
+
+                        let candidateStart = roundTo15(idealStart + (agentIndex % 4) * 15); // Stagger
+
+                        // Ensure candidate is within segment bounds and respects minDistanceFromEdge
+                        candidateStart = Math.max(candidateStart, segment.start + minDistanceFromEdge);
+                        candidateStart = Math.min(candidateStart, segment.end - shortBreakDuration - minDistanceFromEdge);
+
+                        // Check for conflicts with existing breaks (including the assigned lunch)
+                        let currentConflict = 0;
+                        const allExistingBreaks = [...breaks]; // Include already placed short breaks and lunch
+
+                        for (const existingBrk of allExistingBreaks) {
+                            const existingBrkStart = parseTime(existingBrk.startTime).totalMinutes - startTime.totalMinutes;
+                            const existingBrkEnd = existingBrkStart + existingBrk.duration;
+
+                            // Check for overlap or too close proximity
+                            if (
+                                (candidateStart < existingBrkEnd + minBreakSeparation && candidateStart + shortBreakDuration > existingBrkStart - minBreakSeparation)
+                            ) {
+                                currentConflict += 1; // Simple conflict count
+                            }
+                        }
+
+                        if (currentConflict < minConflict) {
+                            minConflict = currentConflict;
+                            bestShortBreakTime = candidateStart;
+                        }
+                    }
+
+                    if (bestShortBreakTime !== -1 && minConflict === 0) { // Only add if no conflicts
+                        breaks.push({
+                            type: 'short',
+                            startTime: formatCleanTime(addMinutes(startTime, bestShortBreakTime)),
+                            endTime: formatCleanTime(addMinutes(startTime, bestShortBreakTime + shortBreakDuration)),
+                            duration: shortBreakDuration
+                        });
+                        placedShortBreaks++;
+                    }
+                }
+                
+                // Sort all breaks (lunch and short breaks) by time
+                breaks.sort((a, b) => {
+                    return parseTime(a.startTime).totalMinutes - parseTime(b.startTime).totalMinutes;
+                });
+                
+                return breaks;
+            }
+            
+            // Format time to ensure clean 00/15/30/45 minute breaks
+            function formatCleanTime(timeObj) {
+                const minutes = Math.round(timeObj.minutes / 15) * 15;
+                let hours = timeObj.hours;
+                let finalMinutes = minutes;
+
+                if (minutes === 60) {
+                    hours = (hours + 1); // Increment hour
+                    finalMinutes = 0;
+                }
+                hours = hours % 24; // Ensure hours wrap around 24
+                return `${hours.toString().padStart(2, '0')}:${finalMinutes.toString().padStart(2, '0')}`;
+            }
+            
+            // Export to Excel function with custom headers
+            function exportToExcel() {
+                const agentSchedules = document.querySelectorAll('.agent-schedule');
+                if (agentSchedules.length === 0) {
+                    alert('Please generate a schedule first.');
+                    return;
+                }
+                
+                // Prepare data for Excel with custom headers
+                const excelData = [];
+                
+                // Add headers
+                excelData.push([
+                    'Agent Name', 
+                    'Team',
+                    'Shift Time', 
+                    '1st Break', 
+                    '2nd Break', 
+                    'Lunch'
+                ]);
+                
+                // Process each agent's schedule
+                agentSchedules.forEach(agent => {
+                    const agentNameWithTeam = agent.querySelector('.agent-name').textContent; // e.g., "Agent Name (Team X)"
+                    const agentNameMatch = agentNameWithTeam.match(/(.*) \((.*)\)/); // Adjusted regex to capture any team name
+                    const agentName = agentNameMatch ? agentNameMatch[1] : agentNameWithTeam;
+                    const teamName = agentNameMatch ? agentNameMatch[2] : '';
+
+                    const shiftTime = agent.querySelector('.shift-time').textContent.replace('Shift: ', '');
+                    const breaks = Array.from(agent.querySelectorAll('.break-item'));
+                    
+                    // Sort breaks by time
+                    breaks.sort((a, b) => {
+                        const timeA = a.querySelector('.break-time').textContent.split(' - ')[0];
+                        const timeB = b.querySelector('.break-time').textContent.split(' - ')[0];
+                        return parseTime(timeA).totalMinutes - parseTime(timeB).totalMinutes;
+                    });
+                    
+                    // Initialize break slots
+                    const breakSlots = {
+                        '1st Break': '',
+                        '2nd Break': '',
+                        'Lunch': ''
+                    };
+                    
+                    // Organize breaks
+                    let shortBreakCount = 0;
+                    breaks.forEach(brk => {
+                        const time = brk.querySelector('.break-time').textContent;
+                        const type = brk.querySelector('.break-type').textContent;
+                        
+                        if (type === 'LUNCH') {
+                            breakSlots['Lunch'] = time;
+                        } else { // Short break
+                            shortBreakCount++;
+                            if (shortBreakCount === 1) {
+                                breakSlots['1st Break'] = time;
+                            } else if (shortBreakCount === 2) {
+                                breakSlots['2nd Break'] = time;
+                            }
+                        }
+                    });
+                    
+                    // Add to Excel data
+                    excelData.push([
+                        agentName,
+                        teamName,
+                        shiftTime,
+                        breakSlots['1st Break'],
+                        breakSlots['2nd Break'],
+                        breakSlots['Lunch']
+                    ]);
+                });
+                
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(excelData);
+                XLSX.utils.book_append_sheet(wb, ws, 'Break Schedule');
+                
+                // Export to file
+                // Note: The filename will still use the global selectedVolume, but shift is now per team.
+                // Consider if you want to include team-specific shift info in the filename.
+                XLSX.writeFile(wb, `BreakSchedule_Generated_${selectedVolume}.xlsx`);
+            }
+            
+            // Helper function to parse time string (HH:MM) to object
+            function parseTime(timeStr) {
+                const parts = timeStr.split(':');
+                const hours = parseInt(parts[0]);
+                const minutes = parseInt(parts[1]);
+                return {
+                    hours: hours,
+                    minutes: minutes,
+                    totalMinutes: hours * 60 + minutes
+                };
+            }
+            
+            // Helper function to add minutes to a time object
+            function addMinutes(timeObj, minutesToAdd) {
+                let totalMinutes = timeObj.hours * 60 + timeObj.minutes + minutesToAdd;
+                // Handle overnight
+                // If totalMinutes goes beyond 24 hours, wrap around
+                if (totalMinutes >= 24 * 60) totalMinutes -= 24 * 60;
+                // If totalMinutes goes negative (shouldn't happen with current logic but for robustness)
+                if (totalMinutes < 0) totalMinutes += 24 * 60;
+                
+                let hours = Math.floor(totalMinutes / 60) % 24;
+                let minutes = totalMinutes % 60;
+                return {
+                    hours: hours,
+                    minutes: minutes,
+                    totalMinutes: totalMinutes
+                };
+            }
+            
+            // Helper function to format time string (HH:MM) to 12-hour format
+            function formatTime(timeStr) {
+                const timeObj = parseTime(timeStr);
+                const hours = timeObj.hours;
+                const minutes = timeObj.minutes;
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours % 12 || 12;
+                return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+            }
+        });
+    </script>
+</body>
+</html>
